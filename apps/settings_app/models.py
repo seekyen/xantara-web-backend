@@ -1,5 +1,84 @@
 from django.db import models
 
+
+class Category(models.Model):
+    code       = models.CharField(max_length=4, unique=True, editable=False)
+    name       = models.CharField(max_length=100)
+    is_active  = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering            = ['code']
+        verbose_name_plural = 'categories'
+
+    def __str__(self):
+        return f'{self.code} — {self.name}'
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = Category.objects.order_by('code').last()
+            if last and last.code.isdigit():
+                next_num = int(last.code) + 1
+            else:
+                next_num = 1
+            self.code = f"{next_num:04d}"
+        super().save(*args, **kwargs)
+
+
+class SubCategory(models.Model):
+    code          = models.CharField(max_length=4, unique=True, editable=False)
+    name          = models.CharField(max_length=100)
+    category_code = models.CharField(max_length=4, db_index=True)  # no FK
+    is_active     = models.BooleanField(default=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering            = ['code']
+        verbose_name_plural = 'sub categories'
+
+    def __str__(self):
+        return f'{self.code} — {self.name}'
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = SubCategory.objects.order_by('code').last()
+            if last and last.code.isdigit():
+                next_num = int(last.code) + 1
+            else:
+                next_num = 1
+            self.code = f"{next_num:04d}"
+        super().save(*args, **kwargs)
+
+    @property
+    def sub_category_count(self):
+        return SubCategory.objects.filter(category_code=self.category_code).count()
+
+
+class Department(models.Model):
+    code       = models.CharField(max_length=4, unique=True, editable=False)
+    name       = models.CharField(max_length=100)
+    class_name = models.CharField(max_length=100, blank=True)
+    is_active  = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['code']
+
+    def __str__(self):
+        return f'{self.code} — {self.name}'
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            last = Department.objects.order_by('code').last()
+            if last and last.code.isdigit():
+                next_num = int(last.code) + 1
+            else:
+                next_num = 1
+            self.code = f"{next_num:04d}"
+        super().save(*args, **kwargs)
+
+
 class StoreSettings(models.Model):
     store_name          = models.CharField(max_length=200, default='Xantara POS')
     address             = models.TextField(blank=True)

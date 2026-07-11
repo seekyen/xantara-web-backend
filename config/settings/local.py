@@ -6,15 +6,14 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 DATABASES = {
     'default': {
-        'ENGINE':   'mssql',
+        'ENGINE':   'django.db.backends.mysql',
         'NAME':     os.getenv('DB_NAME', 'xantara_pos_db'),
-        'USER':     os.getenv('DB_USER', ''),
+        'USER':     os.getenv('DB_USER', 'root'),
         'PASSWORD': os.getenv('DB_PASSWORD', ''),
         'HOST':     os.getenv('DB_HOST', 'localhost'),
-        'PORT':     os.getenv('DB_PORT', '1433'),
+        'PORT':     os.getenv('DB_PORT', '3306'),
         'OPTIONS': {
-            'driver': os.getenv('MSSQL_DRIVER', 'ODBC Driver 17 for SQL Server'),
-            'unicode_results': True,
+            'charset': 'utf8mb4',
         },
     }
 }

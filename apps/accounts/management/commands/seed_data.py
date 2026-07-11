@@ -41,26 +41,29 @@ class Command(BaseCommand):
                 staff.save()
 
         self.stdout.write('Seeding categories + products...')
-        cats = {}
-        for name in ['Footwear', 'Tops', 'Bottoms', 'Accessories', 'Bags']:
-            c, _ = Category.objects.get_or_create(name=name)
-            cats[name] = c
+        for name in ['FTWR', 'TOPS', 'BOTM', 'ACCS', 'BAGS']:
+            Category.objects.get_or_create(name=name)
 
-        for name, sku, cat, price, cost, stock, maxs in [
-            ('Air Force 1',   'AF1-WHT-42',  'Footwear',    4250, 2100, 12, 50),
-            ('Slim Fit Tee',  'SFT-BLK-M',   'Tops',         890,  380, 34,100),
-            ('Cargo Shorts',  'CGS-KHK-L',   'Bottoms',     1650,  720,  3, 40),
-            ('Snapback Cap',  'SBC-RED-OS',  'Accessories',  750,  280,  0, 30),
-            ('Sling Bag',     'SLB-BLK-OS',  'Bags',        1290,  550,  5, 20),
-            ('Sunglasses',    'SGL-BLK-OS',  'Accessories', 2100,  900, 21, 40),
-            ('Polo Shirt',    'PS-WHT-L',    'Tops',        1350,  580, 45, 80),
-            ('Canvas Shoes',  'CS-BLK-41',   'Footwear',    2800, 1200,  0, 30),
-            ('Wrist Watch',   'WW-SLV-OS',   'Accessories', 5500, 2400,  7, 15),
-            ('Jogger Pants',  'JP-BLK-M',    'Bottoms',     1750,  760, 22, 50),
+        for itemcode, descshort, cat, price, cost, stock in [
+            ('AF1-WHT-42',  'Air Force 1',   'FTWR', 4250, 2100, 12),
+            ('SFT-BLK-M',   'Slim Fit Tee',  'TOPS',  890,  380, 34),
+            ('CGS-KHK-L',   'Cargo Shorts',  'BOTM', 1650,  720,  3),
+            ('SBC-RED-OS',  'Snapback Cap',  'ACCS',  750,  280,  0),
+            ('SLB-BLK-OS',  'Sling Bag',     'BAGS', 1290,  550,  5),
+            ('SGL-BLK-OS',  'Sunglasses',    'ACCS', 2100,  900, 21),
+            ('PS-WHT-L',    'Polo Shirt',    'TOPS', 1350,  580, 45),
+            ('CS-BLK-41',   'Canvas Shoes',  'FTWR', 2800, 1200,  0),
+            ('WW-SLV-OS',   'Wrist Watch',   'ACCS', 5500, 2400,  7),
+            ('JP-BLK-M',    'Jogger Pants',  'BOTM', 1750,  760, 22),
         ]:
-            Product.objects.get_or_create(sku=sku, defaults={
-                'name': name, 'category': cats[cat],
-                'price': price, 'cost': cost, 'stock': stock, 'max_stock': maxs,
+            Product.objects.get_or_create(itemcode=itemcode, defaults={
+                'descshort':    descshort,
+                'categorycode': cat,
+                'sell_price_rp': price,
+                'unitcost':     cost,
+                'stock_sa':     stock,
+                'active':       True,
+                'trackinventory': True,
             })
 
         self.stdout.write('Seeding customers...')

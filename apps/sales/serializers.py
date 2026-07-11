@@ -28,7 +28,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 class TransactionItemWriteSerializer(serializers.Serializer):
     product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.filter(is_active=True), source='product'
+        queryset=Product.objects.filter(active=True), source='product'
     )
     qty = serializers.IntegerField(min_value=1)
 
@@ -55,9 +55,9 @@ class TransactionCreateSerializer(serializers.Serializer):
 
         for item_data in items_data:
             product = item_data['product']
-            if product.stock < item_data['qty']:
+            if product.stock_sa < item_data['qty']:
                 raise serializers.ValidationError(
-                    f'Insufficient stock for {product.name}'
+                    f'Insufficient stock for {product.descshort}'
                 )
 
         txn = Transaction.objects.create(
@@ -75,12 +75,11 @@ class TransactionCreateSerializer(serializers.Serializer):
             qty     = item_data['qty']
             TransactionItem.objects.create(
                 transaction=txn, product=product,
-                name=product.name, sku=product.sku,
-                qty=qty, price=product.price,
+                name=product.descshort, sku=product.itemcode,
+                qty=qty, price=product.sell_price_rp,
             )
-            subtotal      += product.price * qty
-            product.stock -= qty
-            product.sold  += qty
+            subtotal         += product.sell_price_rp * qty
+            product.stock_sa -= qty
             product.save()
 
         taxable      = subtotal - txn.discount
