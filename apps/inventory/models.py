@@ -38,7 +38,7 @@ class Product(models.Model):
     itemcode      = models.CharField(max_length=15, unique=True, db_index=True)
     itemcode2     = models.CharField(max_length=15, blank=True, db_index=True)
     itemcode3     = models.CharField(max_length=15, blank=True, db_index=True)
-    itemcode3type = models.CharField(max_length=1,  blank=True)
+    itemcode3type = models.CharField(max_length=10, blank=True)
 
     # Description
     desclong  = models.CharField(max_length=50, blank=True)
@@ -46,18 +46,18 @@ class Product(models.Model):
     querytext = models.CharField(max_length=15, blank=True)
 
     # Classification
-    categorycode    = models.CharField(max_length=4, blank=True, db_index=True)
-    deptcode        = models.CharField(max_length=4, blank=True, db_index=True)
-    classcode       = models.CharField(max_length=4, blank=True, db_index=True)
-    subcategorycode = models.CharField(max_length=4, blank=True)
-    group           = models.CharField(max_length=2, blank=True)
+    categorycode    = models.CharField(max_length=10, blank=True, db_index=True)
+    deptcode        = models.CharField(max_length=10, blank=True, db_index=True)
+    classcode       = models.CharField(max_length=10, blank=True, db_index=True)
+    subcategorycode = models.CharField(max_length=10, blank=True)
+    group           = models.CharField(max_length=10, blank=True)
 
     # Variants
-    size      = models.CharField(max_length=5,  blank=True)
-    color     = models.CharField(max_length=4,  blank=True)
+    size      = models.CharField(max_length=10, blank=True)
+    color     = models.CharField(max_length=10, blank=True)
     style     = models.CharField(max_length=12, blank=True)
-    item_type = models.CharField(max_length=1,  blank=True)
-    form      = models.CharField(max_length=1,  blank=True)
+    item_type = models.CharField(max_length=10, blank=True)
+    form      = models.CharField(max_length=10, blank=True)
 
     # Selling — Prices
     sell_price_rp = models.FloatField(default=0.0)
@@ -69,8 +69,8 @@ class Product(models.Model):
     sell_lastdate = models.DateField(null=True, blank=True)
 
     # Selling — UOM / Packaging
-    sell_uom       = models.CharField(max_length=6,  blank=True)
-    sell_pack      = models.CharField(max_length=7,  blank=True)
+    sell_uom       = models.CharField(max_length=10, blank=True)
+    sell_pack      = models.CharField(max_length=10, blank=True)
     sell_packconv  = models.FloatField(default=0.0)
     sell_dimension = models.CharField(max_length=12, blank=True)
     sell_weight    = models.CharField(max_length=12, blank=True)
@@ -84,15 +84,15 @@ class Product(models.Model):
     # Promotional Pricing
     pro_allowed  = models.BooleanField(default=False)
     pro_datefr   = models.DateField(null=True, blank=True)
-    pro_timefr   = models.CharField(max_length=5, blank=True)
+    pro_timefr   = models.CharField(max_length=10, blank=True)
     pro_dateto   = models.DateField(null=True, blank=True)
-    pro_timeto   = models.CharField(max_length=5, blank=True)
+    pro_timeto   = models.CharField(max_length=10, blank=True)
     pro_priceret = models.FloatField(default=0.0)
     pro_pricewhl = models.FloatField(default=0.0)
     pro_cost     = models.FloatField(default=0.0)
 
     # Supplier
-    suppliercode = models.CharField(max_length=8, blank=True, db_index=True)
+    suppliercode = models.CharField(max_length=10, blank=True, db_index=True)
 
     # Costing
     markup_rp   = models.FloatField(default=0.0)
@@ -102,11 +102,11 @@ class Product(models.Model):
     unitcostave = models.FloatField(default=0.0)
 
     # Accounting / Tax
-    taxcode     = models.CharField(max_length=1,  blank=True)
+    taxcode     = models.CharField(max_length=10, blank=True)
     glcode      = models.CharField(max_length=10, blank=True)
     invcode     = models.CharField(max_length=10, blank=True)
-    pricetype   = models.CharField(max_length=1,  blank=True)
-    barcodetype = models.CharField(max_length=1,  blank=True)
+    pricetype   = models.CharField(max_length=10, blank=True)
+    barcodetype = models.CharField(max_length=10, blank=True)
 
     # Item Behavior Flags
     trackinventory = models.BooleanField(default=False)
@@ -124,18 +124,32 @@ class Product(models.Model):
     fastfactor    = models.SmallIntegerField(default=0)
     minwhlsaleqty = models.FloatField(default=0.0)
     picturefile   = models.CharField(max_length=15, blank=True)
-    planerid      = models.CharField(max_length=8,  blank=True)
-    buyerid       = models.CharField(max_length=8,  blank=True)
-    printto       = models.CharField(max_length=2,  blank=True)
-    info1         = models.CharField(max_length=2,  blank=True)
-    info2         = models.CharField(max_length=2,  blank=True)
-    tag           = models.CharField(max_length=1,  blank=True)
+    image         = models.ImageField(upload_to='products/', blank=True, null=True)
+    planerid      = models.CharField(max_length=10, blank=True)
+    buyerid       = models.CharField(max_length=10, blank=True)
+    printto       = models.CharField(max_length=10, blank=True)
+    info1         = models.CharField(max_length=10, blank=True)
+    info2         = models.CharField(max_length=10, blank=True)
+    tag           = models.CharField(max_length=10, blank=True)
 
     # Audit
-    createdby   = models.CharField(max_length=8, blank=True)
+    createdby   = models.CharField(max_length=10, blank=True)
     createddate = models.DateField(null=True, blank=True)
-    updatedby   = models.CharField(max_length=8, blank=True)
+    updatedby   = models.CharField(max_length=10, blank=True)
     updateddate = models.DateField(null=True, blank=True)
+
+    # Stock (merged back from ProductStock — single store-wide value, no per-branch split)
+    stock_sa       = models.FloatField(default=0.0)
+    stock_book_sa  = models.FloatField(default=0.0)
+    beg_balance_sa = models.FloatField(default=0.0)
+    stock_sr       = models.FloatField(default=0.0)
+    stock_book_sr  = models.FloatField(default=0.0)
+    beg_balance_sr = models.FloatField(default=0.0)
+    stock_reserved = models.FloatField(default=0.0)
+    stock_rop      = models.FloatField(default=0.0)
+    stock_limit    = models.FloatField(default=0.0)
+    stock_onorder  = models.FloatField(default=0.0)
+    beg_cost       = models.FloatField(default=0.0)
 
     class Meta:
         db_table = 'product'
@@ -270,7 +284,7 @@ class StockMovement(models.Model):
     branch_code   = models.CharField(max_length=10, db_index=True)
 
     movement_type = models.CharField(max_length=20, choices=MOVEMENT_TYPES, db_index=True)
-    location      = models.CharField(max_length=2,  choices=LOCATION_CHOICES, default='sa')
+    location      = models.CharField(max_length=10, choices=LOCATION_CHOICES, default='sa')
 
     # Signed qty: negative = out, positive = in
     qty        = models.FloatField()
@@ -282,7 +296,7 @@ class StockMovement(models.Model):
     remarks  = models.CharField(max_length=255, blank=True)
 
     # Audit
-    created_by = models.CharField(max_length=8, blank=True)
+    created_by = models.CharField(max_length=10, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

@@ -49,7 +49,10 @@ class ProductSerializer(serializers.ModelSerializer):
             'trackinventory', 'active', 'withserial', 'generic', 'measured',
             'withalias', 'expirydate', 'lotnumber', 'withautoconv',
             'slowfactor', 'fastfactor', 'minwhlsaleqty',
-            'picturefile', 'planerid', 'buyerid', 'printto', 'info1', 'info2', 'tag',
+            'picturefile', 'image', 'planerid', 'buyerid', 'printto', 'info1', 'info2', 'tag',
+            'stock_sa', 'stock_book_sa', 'beg_balance_sa',
+            'stock_sr', 'stock_book_sr', 'beg_balance_sr',
+            'stock_reserved', 'stock_rop', 'stock_limit', 'stock_onorder', 'beg_cost',
             'createdby', 'createddate', 'updatedby', 'updateddate',
             'is_on_promo',
         ]
@@ -76,7 +79,10 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'trackinventory', 'active', 'withserial', 'generic', 'measured',
             'withalias', 'expirydate', 'lotnumber', 'withautoconv',
             'slowfactor', 'fastfactor', 'minwhlsaleqty',
-            'picturefile', 'planerid', 'buyerid', 'printto', 'info1', 'info2', 'tag',
+            'picturefile', 'image', 'planerid', 'buyerid', 'printto', 'info1', 'info2', 'tag',
+            'stock_sa', 'stock_book_sa', 'beg_balance_sa',
+            'stock_sr', 'stock_book_sr', 'beg_balance_sr',
+            'stock_reserved', 'stock_rop', 'stock_limit', 'stock_onorder', 'beg_cost',
         ]
 
 
