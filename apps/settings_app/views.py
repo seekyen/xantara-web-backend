@@ -5,10 +5,12 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import StoreSettings, Category, SubCategory, Department
+from .models import StoreSettings, Category, SubCategory, Department, Class, Size, Color, Unit, Form, ItemType
 from .serializers import (
     StoreSettingsSerializer, CategorySerializer,
     SubCategorySerializer, DepartmentSerializer,
+    ClassSerializer, SizeSerializer, ColorSerializer,
+    UnitSerializer, FormSerializer, ItemTypeSerializer,
 )
 from utils.permissions import IsAdminOrManager
 
@@ -98,3 +100,141 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         department.is_active = not department.is_active
         department.save(update_fields=['is_active'])
         return Response(DepartmentSerializer(department).data)
+
+
+class ClassViewSet(viewsets.ModelViewSet):
+    serializer_class = ClassSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return Class.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(ClassSerializer(obj).data)
+
+
+class SizeViewSet(viewsets.ModelViewSet):
+    serializer_class = SizeSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return Size.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(SizeSerializer(obj).data)
+
+
+class ColorViewSet(viewsets.ModelViewSet):
+    serializer_class = ColorSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return Color.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(ColorSerializer(obj).data)
+
+
+class UnitViewSet(viewsets.ModelViewSet):
+    serializer_class = UnitSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return Unit.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(UnitSerializer(obj).data)
+
+
+class FormViewSet(viewsets.ModelViewSet):
+    serializer_class = FormSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return Form.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(FormSerializer(obj).data)
+
+
+class ItemTypeViewSet(viewsets.ModelViewSet):
+    serializer_class = ItemTypeSerializer
+    filter_backends  = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields    = ['code', 'name']
+    ordering_fields  = ['code', 'name']
+    ordering         = ['code']
+
+    def get_queryset(self):
+        return ItemType.objects.all()
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAdminOrManager()]
+        return [IsAuthenticated()]
+
+    def destroy(self, _request, *_args, **_kwargs):
+        obj           = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active'])
+        return Response(ItemTypeSerializer(obj).data)

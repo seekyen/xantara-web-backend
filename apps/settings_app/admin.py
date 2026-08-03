@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import StoreSettings, Category, SubCategory, Department
+from .models import StoreSettings, Category, SubCategory, Department, Class, Size, Color, Unit, Form, ItemType
 
 
 @admin.register(StoreSettings)
@@ -24,5 +24,47 @@ class SubCategoryAdmin(admin.ModelAdmin):
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
     list_display  = ['code', 'name', 'class_name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(Class)
+class ClassAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(Size)
+class SizeAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(Color)
+class ColorAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(Unit)
+class UnitAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(Form)
+class FormAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
+    list_filter   = ['is_active']
+    search_fields = ['code', 'name']
+
+
+@admin.register(ItemType)
+class ItemTypeAdmin(admin.ModelAdmin):
+    list_display  = ['code', 'name', 'is_active']
     list_filter   = ['is_active']
     search_fields = ['code', 'name']

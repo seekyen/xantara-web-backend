@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import StoreSettings, Category, SubCategory, Department
+from .models import StoreSettings, Category, SubCategory, Department, Class, Size, Color, Unit, Form, ItemType
 
 
 class StoreSettingsSerializer(serializers.ModelSerializer):
@@ -57,4 +57,46 @@ class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Department
         fields = ['id', 'code', 'name', 'class_name', 'is_active']
+        read_only_fields = ['code']
+
+
+class ClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Class
+        fields = ['id', 'code', 'name', 'is_active']
+        read_only_fields = ['code']
+
+
+class SizeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Size
+        fields = ['id', 'code', 'name', 'is_active']
+        read_only_fields = ['code']
+
+
+class ColorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Color
+        fields = ['id', 'code', 'name', 'is_active']
+        read_only_fields = ['code']
+
+
+class UnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Unit
+        fields = ['id', 'code', 'name', 'is_active']
+        read_only_fields = ['code']
+
+
+class FormSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Form
+        fields = ['id', 'code', 'name', 'is_active']
+        read_only_fields = ['code']
+
+
+class ItemTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = ItemType
+        fields = ['id', 'code', 'name', 'is_active']
         read_only_fields = ['code']
