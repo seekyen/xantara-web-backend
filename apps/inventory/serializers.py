@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from rest_framework import serializers
 from .models import Branch, Category, Product, ProductStock, StockMovement
 
@@ -84,6 +86,57 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'stock_sr', 'stock_book_sr', 'beg_balance_sr',
             'stock_reserved', 'stock_rop', 'stock_limit', 'stock_onorder', 'beg_cost',
         ]
+
+
+class PublicCatalogItemSerializer(serializers.ModelSerializer):
+    """Minimal product representation safe for an unauthenticated catalog."""
+
+    sku = serializers.CharField(source='itemcode', read_only=True)
+    name = serializers.SerializerMethodField()
+    description = serializers.CharField(source='desclong', read_only=True)
+    category = serializers.CharField(source='categorycode', read_only=True)
+    unit = serializers.CharField(source='sell_uom', read_only=True)
+    price = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    availability = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'sku', 'name', 'description', 'category', 'unit',
+            'price', 'image_url', 'availability',
+        ]
+
+    def get_name(self, obj):
+        return obj.descshort or obj.desclong or obj.itemcode
+
+    def get_price(self, obj):
+        value = obj.pro_priceret if obj.is_on_promo and obj.pro_priceret > 0 else obj.sell_price_rp
+        amount = Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return format(amount, '.2f')
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        request = self.context.get('request')
+        url = obj.image.url
+        return request.build_absolute_uri(url) if request else url
+
+    def get_availability(self, obj):
+        if not obj.trackinventory:
+            return 'available'
+
+        stock = self.context.get('stock_by_itemcode', {}).get(obj.itemcode)
+        if stock is None:
+            return 'unavailable'
+
+        available = Decimal(str(stock.available_stock))
+        reorder_point = Decimal(str(stock.stock_rop))
+        if available <= 0:
+            return 'unavailable'
+        if reorder_point > 0 and available <= reorder_point:
+            return 'low_stock'
+        return 'available'
 
 
 # ---------------------------------------------------------------------------

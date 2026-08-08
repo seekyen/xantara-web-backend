@@ -6,6 +6,7 @@ from .views import (
     ProductViewSet,
     ProductStockViewSet,
     StockMovementViewSet,
+    PublicBranchCatalogView,
 )
 
 router = DefaultRouter()
@@ -15,4 +16,11 @@ router.register('products',           ProductViewSet,      basename='product')
 router.register('stock',              ProductStockViewSet, basename='stock')
 router.register('stock-movements',    StockMovementViewSet, basename='stock-movement')
 
-urlpatterns = [path('', include(router.urls))]
+urlpatterns = [
+    path(
+        'public/branches/<str:branch_code>/catalog/',
+        PublicBranchCatalogView.as_view(),
+        name='public-branch-catalog',
+    ),
+    path('', include(router.urls)),
+]

@@ -1,11 +1,14 @@
 from django.db import transaction
-from django.db.models import F, FloatField, ExpressionWrapper, Sum
+from django.db.models import F, FloatField, ExpressionWrapper, Q, Sum
+from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -14,11 +17,77 @@ from .serializers import (
     BranchSerializer,
     CategorySerializer,
     ProductSerializer, ProductWriteSerializer,
+    PublicCatalogItemSerializer,
     ProductStockSerializer, ProductStockWriteSerializer,
     StockMovementSerializer,
     StockAdjustSerializer, StockDeductSerializer, StockTransferSerializer,
 )
 from utils.permissions import IsAdminOrManager
+
+
+class PublicCatalogPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class PublicBranchCatalogView(APIView):
+    """Public, read-only branch catalog for QR-launched customer clients."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, branch_code):
+        branch = get_object_or_404(
+            Branch,
+            code__iexact=branch_code,
+            active=True,
+        )
+
+        stock_records = list(
+            ProductStock.objects.filter(branch_code__iexact=branch.code)
+        )
+        stock_by_itemcode = {stock.itemcode: stock for stock in stock_records}
+
+        products = Product.objects.filter(
+            active=True,
+            itemcode__in=stock_by_itemcode.keys(),
+        )
+
+        search = request.query_params.get('search', '').strip()
+        if search:
+            products = products.filter(
+                Q(itemcode__icontains=search)
+                | Q(descshort__icontains=search)
+                | Q(desclong__icontains=search)
+            )
+
+        category = request.query_params.get('category', '').strip()
+        if category:
+            products = products.filter(categorycode__iexact=category)
+
+        products = products.order_by('categorycode', 'descshort', 'itemcode')
+        paginator = PublicCatalogPagination()
+        page = paginator.paginate_queryset(products, request, view=self)
+        serializer = PublicCatalogItemSerializer(
+            page,
+            many=True,
+            context={
+                'request': request,
+                'stock_by_itemcode': stock_by_itemcode,
+            },
+        )
+
+        response = paginator.get_paginated_response(serializer.data)
+        response.data = {
+            'branch': {
+                'code': branch.code,
+                'name': branch.name,
+                'address': branch.address,
+            },
+            **response.data,
+        }
+        return response
 
 
 # ---------------------------------------------------------------------------
