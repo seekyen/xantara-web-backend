@@ -16,6 +16,7 @@ db.sqlite3
 media/
 
 # Editors / tools
+.tools/
 .claude/
 .vscode/
 .idea/
