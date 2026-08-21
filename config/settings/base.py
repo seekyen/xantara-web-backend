@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.branches',
     'apps.settings_app',
+    'apps.syncing',
 ]
 
 MIDDLEWARE = [
