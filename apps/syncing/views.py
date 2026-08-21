@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from .models import CloudSyncEvent, SyncInstallation
 from .serializers import SyncEventUploadSerializer
+from .services import SyncProjectionError, project_inventory_event
 
 
 class SyncEventUploadView(APIView):
@@ -60,22 +61,30 @@ class SyncEventUploadView(APIView):
             'device_created_at': data['createdAt'],
         }
 
-        with transaction.atomic():
-            event, created = CloudSyncEvent.objects.get_or_create(
-                business_id=data['businessId'],
-                idempotency_key=data['idempotencyKey'],
-                defaults=event_values,
-            )
-            if not created and not self._matches(event, event_values):
-                return Response(
-                    {'detail': 'Idempotency key was reused for another event.'},
-                    status=status.HTTP_409_CONFLICT,
+        try:
+            with transaction.atomic():
+                event, created = CloudSyncEvent.objects.get_or_create(
+                    business_id=data['businessId'],
+                    idempotency_key=data['idempotencyKey'],
+                    defaults=event_values,
                 )
+                if not created and not self._matches(event, event_values):
+                    return Response(
+                        {'detail': 'Idempotency key was reused for another event.'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                projected = project_inventory_event(event) if created else False
+        except SyncProjectionError as error:
+            return Response(
+                {'detail': str(error)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(
             {
                 'serverEventId': str(event.pk),
                 'acceptedAt': event.accepted_at.isoformat(),
+                'inventoryProjected': projected,
             },
             status=(status.HTTP_202_ACCEPTED if created else status.HTTP_200_OK),
         )

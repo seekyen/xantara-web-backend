@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import Staff
-from apps.inventory.models import Branch
+from apps.inventory.models import Branch, Product, ProductStock
 
 from .models import CloudSyncEvent, SyncInstallation
 
@@ -33,6 +33,13 @@ class SyncEventUploadTests(APITestCase):
             branch=self.branch,
             authorized_staff=self.staff,
             sync_enabled=True,
+        )
+        Product.objects.create(itemcode='product-1', descshort='Sample')
+        ProductStock.objects.create(
+            itemcode='product-1',
+            branch_code=self.branch.code,
+            stock_sa=10,
+            stock_book_sa=10,
         )
         self.client.force_authenticate(self.staff)
         self.url = reverse('sync-event-upload')
@@ -129,3 +136,130 @@ class SyncEventUploadTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(CloudSyncEvent.objects.count(), 0)
+
+    def test_invoice_issue_projects_stock_once(self):
+        payload = self.payload(
+            aggregateType='invoice',
+            aggregateId='invoice-1',
+            eventType='invoice.issued',
+            idempotencyKey='invoice.issued:invoice-1',
+            payload={
+                'branchId': 'branch-main',
+                'lines': [{'productId': 'product-1', 'quantity': 2}],
+            },
+        )
+        first = self.post_event(
+            payload,
+            HTTP_IDEMPOTENCY_KEY='invoice.issued:invoice-1',
+        )
+        second = self.post_event(
+            payload,
+            HTTP_IDEMPOTENCY_KEY='invoice.issued:invoice-1',
+        )
+
+        self.assertEqual(first.status_code, 202)
+        self.assertTrue(first.data['inventoryProjected'])
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(ProductStock.objects.get().stock_sa, 8)
+
+    def test_failed_projection_rolls_back_event(self):
+        response = self.post_event(
+            self.payload(
+                aggregateType='invoice',
+                aggregateId='invoice-2',
+                eventType='invoice.issued',
+                idempotencyKey='invoice.issued:invoice-2',
+                payload={
+                    'branchId': 'branch-main',
+                    'lines': [{'productId': 'product-1', 'quantity': 11}],
+                },
+            ),
+            HTTP_IDEMPOTENCY_KEY='invoice.issued:invoice-2',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CloudSyncEvent.objects.count(), 0)
+        self.assertEqual(ProductStock.objects.get().stock_sa, 10)
+
+    def test_void_restores_original_invoice_stock_once(self):
+        issued = self.payload(
+            aggregateType='invoice',
+            aggregateId='invoice-3',
+            eventType='invoice.issued',
+            idempotencyKey='invoice.issued:invoice-3',
+            payload={
+                'branchId': 'branch-main',
+                'lines': [{'productId': 'product-1', 'quantity': 3}],
+            },
+        )
+        self.post_event(issued, HTTP_IDEMPOTENCY_KEY='invoice.issued:invoice-3')
+        voided = self.payload(
+            localEventId='event-void-3',
+            aggregateType='invoice',
+            aggregateId='invoice-3',
+            eventType='invoice.voided',
+            idempotencyKey='invoice.voided:invoice-3',
+            payload={'branchId': 'branch-main'},
+        )
+        response = self.post_event(
+            voided,
+            HTTP_IDEMPOTENCY_KEY='invoice.voided:invoice-3',
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(ProductStock.objects.get().stock_sa, 10)
+
+    def test_transfer_projects_each_mapped_branch(self):
+        destination = Branch.objects.create(code='BGC', name='BGC')
+        SyncInstallation.objects.create(
+            business_id='business-1',
+            installation_id='installation-2',
+            terminal_id='terminal-2',
+            local_branch_id='branch-bgc',
+            branch=destination,
+            authorized_staff=self.staff,
+            sync_enabled=True,
+        )
+        ProductStock.objects.create(
+            itemcode='product-1', branch_code='BGC', stock_sa=4, stock_book_sa=4,
+        )
+        dispatched = self.payload(
+            aggregateType='inventory_transfer',
+            aggregateId='transfer-1',
+            eventType='inventory.transfer_dispatched',
+            idempotencyKey='inventory.transfer_dispatched:transfer-1',
+            payload={
+                'productId': 'product-1',
+                'sourceBranchId': 'branch-main',
+                'destinationBranchId': 'branch-bgc',
+                'quantity': 2,
+            },
+        )
+        self.post_event(
+            dispatched,
+            HTTP_IDEMPOTENCY_KEY='inventory.transfer_dispatched:transfer-1',
+        )
+        received = self.payload(
+            localEventId='event-received-1',
+            branchId='branch-bgc',
+            aggregateType='inventory_transfer',
+            aggregateId='transfer-1',
+            eventType='inventory.transfer_received',
+            idempotencyKey='inventory.transfer_received:transfer-1',
+            payload={
+                'productId': 'product-1',
+                'sourceBranchId': 'branch-main',
+                'destinationBranchId': 'branch-bgc',
+                'quantity': 2,
+            },
+        )
+        response = self.post_event(
+            received,
+            HTTP_IDEMPOTENCY_KEY='inventory.transfer_received:transfer-1',
+            HTTP_X_XANTARA_INSTALLATION_ID='installation-2',
+            HTTP_X_XANTARA_TERMINAL_ID='terminal-2',
+        )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(ProductStock.objects.get(branch_code='MAIN').stock_sa, 8)
+        self.assertEqual(ProductStock.objects.get(branch_code='BGC').stock_sa, 6)
