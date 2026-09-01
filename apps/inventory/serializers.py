@@ -65,6 +65,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Product
         fields = [
+            'id',
             'itemcode', 'itemcode2', 'itemcode3', 'itemcode3type',
             'desclong', 'descshort', 'querytext',
             'deptcode', 'classcode', 'categorycode', 'subcategorycode', 'group',
@@ -86,6 +87,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'stock_sr', 'stock_book_sr', 'beg_balance_sr',
             'stock_reserved', 'stock_rop', 'stock_limit', 'stock_onorder', 'beg_cost',
         ]
+        read_only_fields = ['id']
 
 
 class PublicCatalogItemSerializer(serializers.ModelSerializer):
