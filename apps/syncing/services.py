@@ -1,8 +1,10 @@
 from collections import defaultdict
 
+from apps.customers.loyalty import award_points_for_event, reverse_points_for_event
 from apps.inventory.models import ProductStock
 
 from .models import CloudSyncEvent, SyncInstallation
+from .returns_projection import project_credit_note
 
 
 class SyncProjectionError(ValueError):
@@ -13,6 +15,7 @@ def project_inventory_event(event):
     handlers = {
         'invoice.issued': _project_invoice_issued,
         'invoice.voided': _project_invoice_voided,
+        'credit_note.issued': project_credit_note,
         'inventory.transfer_dispatched': _project_transfer_dispatched,
         'inventory.transfer_received': _project_transfer_received,
         'inventory.transfer_cancelled': _project_transfer_cancelled,
@@ -28,12 +31,13 @@ def _project_invoice_issued(event):
     _require_payload_branch(event, 'branchId')
     quantities = _invoice_quantities(event.payload)
     _apply_quantities(event.branch.code, quantities, subtract=True)
+    award_points_for_event(event)
 
 
 def _project_invoice_voided(event):
     _require_payload_branch(event, 'branchId')
     issued = (
-        CloudSyncEvent.objects.filter(
+        CloudSyncEvent.objects.select_for_update().filter(
             business_id=event.business_id,
             aggregate_id=event.aggregate_id,
             event_type='invoice.issued',
@@ -54,7 +58,10 @@ def _project_invoice_voided(event):
         .exists()
     ):
         raise SyncProjectionError('The invoice was already voided.')
+    if CloudSyncEvent.objects.filter(business_id=event.business_id, event_type='credit_note.issued', payload__invoiceId=event.aggregate_id).exists():
+        raise SyncProjectionError('Invoice has credit notes; return only the remaining items.')
     _apply_quantities(event.branch.code, _invoice_quantities(issued.payload))
+    reverse_points_for_event(issued)
 
 
 def _project_transfer_dispatched(event):

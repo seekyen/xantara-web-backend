@@ -220,7 +220,8 @@ class ProductStock(models.Model):
 
     @property
     def available_stock(self):
-        return self.total_stock - self.stock_reserved
+        from .batches import stock_summary
+        return stock_summary(self)['sellable']
 
     @property
     def is_below_rop(self):
@@ -232,6 +233,10 @@ class ProductStock(models.Model):
         Call inside atomic() with select_for_update() on the queryset.
         Raises ValidationError if insufficient stock.
         """
+        if location not in ('sa', 'sr') or qty <= 0:
+            raise ValidationError('Choose a valid storage area and positive quantity.')
+        from .batches import consume_batches
+        consume_batches(self, qty, location)
         if location == 'sa':
             if self.stock_sa < qty:
                 raise ValidationError(
@@ -338,3 +343,90 @@ class StockMovement(models.Model):
             remarks=remarks,
             created_by=created_by,
         )
+
+class InventoryProfile(models.Model):
+    product = models.OneToOneField(Product, on_delete=models.PROTECT, related_name='inventory_profile')
+    tier = models.CharField(max_length=12, default='basic')
+    data = models.JSONField(default=dict)
+    branch_data = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+    # Deliberately its own column, not part of `data` — `data` is round-tripped whole
+    # through the tiered editor's save flow (merged with whatever the client sends), so
+    # anything computed/backend-managed placed in there leaks back in as a phantom
+    # "unknown field" on the next save. This is backend bookkeeping only.
+    last_purchase_supplier_id = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'inventory_profile'
+
+
+class InventoryRevision(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='inventory_revisions')
+    branch_code = models.CharField(max_length=10)
+    revision = models.PositiveIntegerField()
+    actor = models.CharField(max_length=100)
+    reason = models.CharField(max_length=255)
+    before = models.JSONField(default=dict)
+    after = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_revision'
+        ordering = ['-created_at', '-pk']
+        constraints = [models.UniqueConstraint(fields=['product', 'revision'], name='unique_inventory_revision')]
+
+class InventoryBatch(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='stock_batches')
+    number = models.CharField(max_length=80)
+    received_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+    unit_cost_centavos = models.PositiveBigIntegerField(default=0)
+    # A batch is always stocked in its minimum/base UOM, while these fields retain
+    # how the supplier delivered and priced it (for example 2 boxes x 12 bottles).
+    base_uom = models.CharField(max_length=10, default='pc')
+    purchase_uom = models.CharField(max_length=10, default='pc')
+    package_quantity = models.PositiveIntegerField(default=1)
+    units_per_package = models.PositiveIntegerField(default=1)
+    package_cost_centavos = models.PositiveBigIntegerField(default=0)
+    pricing_factors = models.JSONField(default=list)
+    markup_percent = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    vat_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    selling_price_centavos = models.PositiveBigIntegerField(default=0)
+    # Plain id (not a FK) matching how this codebase already references suppliers
+    # elsewhere — set when this batch came from a Purchase Order; null for ad-hoc/manual
+    # receipts, which have no traceable supplier.
+    supplier_id = models.PositiveIntegerField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['product', 'number'], name='unique_product_batch')]
+
+
+class InventoryBatchBalance(models.Model):
+    batch = models.ForeignKey(InventoryBatch, on_delete=models.PROTECT, related_name='balances')
+    stock = models.ForeignKey(ProductStock, on_delete=models.PROTECT, related_name='batch_balances')
+    location = models.CharField(max_length=2, choices=[('sa', 'Sales area'), ('sr', 'Store room')], default='sa')
+    quantity = models.FloatField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['batch', 'stock', 'location'], name='unique_batch_stock_location'),
+            models.CheckConstraint(condition=models.Q(quantity__gte=0), name='batch_quantity_nonnegative'),
+        ]
+
+
+class InventoryBatchMovement(models.Model):
+    batch = models.ForeignKey(InventoryBatch, on_delete=models.PROTECT, related_name='movements')
+    branch_code = models.CharField(max_length=10)
+    kind = models.CharField(max_length=20)
+    quantity = models.FloatField()
+    quantity_before = models.FloatField()
+    quantity_after = models.FloatField()
+    reason = models.CharField(max_length=255)
+    reference = models.CharField(max_length=30)
+    actor = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']

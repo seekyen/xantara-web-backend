@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, F, ExpressionWrapper, FloatField
 from django.utils import timezone
 from datetime import timedelta
 from apps.sales.models import Transaction, TransactionItem
@@ -16,15 +16,27 @@ class DashboardStatsView(APIView):
         yq = Transaction.objects.filter(created_at__date=yesterday, status='completed')
         tr = tq.aggregate(t=Sum('total'))['t'] or 0
         yr = yq.aggregate(t=Sum('total'))['t'] or 1
+
+        # Stock status isn't a stored field — Product carries its own merged stock_sa/
+        # stock_sr/stock_rop (see ProductViewSet.stats' below_rop for the same pattern).
+        active_products = Product.objects.filter(active=True)
+        stock = active_products.annotate(
+            total_stk=ExpressionWrapper(F('stock_sa') + F('stock_sr'), output_field=FloatField())
+        )
+        out_of_stock = stock.filter(total_stk__lte=0).count()
+        low_stock    = stock.filter(
+            stock_rop__gt=0, total_stk__gt=0, total_stk__lt=F('stock_rop')
+        ).count()
+
         return Response({
             'today_revenue':      tr,
             'revenue_change_pct': round(((tr - yr) / yr) * 100, 1),
             'today_txn_count':    tq.count(),
             'txn_change':         tq.count() - (yq.count() or 1),
             'today_avg_order':    tq.aggregate(a=Avg('total'))['a'] or 0,
-            'total_products':     Product.objects.filter(is_active=True).count(),
-            'low_stock_count':    Product.objects.filter(status='low_stock').count(),
-            'out_of_stock_count': Product.objects.filter(status='out_of_stock').count(),
+            'total_products':     active_products.count(),
+            'low_stock_count':    low_stock,
+            'out_of_stock_count': out_of_stock,
         })
 
 class WeeklySalesView(APIView):
@@ -78,8 +90,9 @@ class TopProductsView(APIView):
             qs = qs.filter(
                 transaction__created_at__date__gte=timezone.now().date() - timedelta(days=7)
             )
+        # Product has no `name`/`sku` fields — the real columns are `descshort`/`itemcode`.
         return Response(list(
-            qs.values('product__id','product__name','product__sku').annotate(
+            qs.values('product__id','product__descshort','product__itemcode').annotate(
                 total_qty=Sum('qty'), total_revenue=Sum('line_total')
             ).order_by('-total_revenue')[:limit]
         ))
@@ -111,13 +124,15 @@ class CategoryRevenueView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Product.categorycode is a plain code, not a FK to Category — there's no
+        # `category` relation to join through, so group by the code itself.
         qs    = TransactionItem.objects.filter(transaction__status='completed')
-        qs    = qs.values('product__category__name').annotate(
+        qs    = qs.values('product__categorycode').annotate(
             revenue=Sum('line_total'), units=Sum('qty')
         ).order_by('-revenue')
         total = sum(r['revenue'] for r in qs if r['revenue'])
         return Response([{
-            'category':   r['product__category__name'] or 'Uncategorized',
+            'category':   r['product__categorycode'] or 'Uncategorized',
             'revenue':    r['revenue'],
             'units':      r['units'],
             'percentage': round((r['revenue'] / total) * 100, 1) if total else 0,

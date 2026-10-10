@@ -214,6 +214,9 @@ class ItemType(models.Model):
 
 
 class StoreSettings(models.Model):
+    business_id         = models.CharField(max_length=64, unique=True, blank=True)
+    setup_completed     = models.BooleanField(default=False)
+    setup_completed_at  = models.DateTimeField(null=True, blank=True)
     store_name          = models.CharField(max_length=200, default='Xantara POS')
     address             = models.TextField(blank=True)
     contact_email       = models.EmailField(blank=True)
@@ -246,3 +249,5 @@ class StoreSettings(models.Model):
     def get_settings(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+from .fiscal_models import FiscalCompany, FiscalBranch, FiscalTerminal, FiscalAudit

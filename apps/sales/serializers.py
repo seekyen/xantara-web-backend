@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.db import transaction as db_transaction
 from .models import Transaction, TransactionItem
 from apps.inventory.models import Product
+from apps.customers.loyalty import award_points
 
 class TransactionItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -88,14 +89,18 @@ class TransactionCreateSerializer(serializers.Serializer):
         txn.total    = taxable + txn.tax
         txn.status   = 'completed'
         txn.save()
+        # The values above are floats (prices are float columns); reload so totals are exact
+        # Decimals before they are added to the customer's Decimal totals and used for points.
+        txn.refresh_from_db()
 
         if txn.customer:
             c = txn.customer
             c.total_spent    += txn.total
             c.total_orders   += 1
-            c.loyalty_points += int(txn.total // 100)
             c.last_visit      = timezone.now().date()
-            c.save()
+            # Points are added in the database, so save only the columns edited here.
+            c.save(update_fields=['total_spent', 'total_orders', 'last_visit', 'updated_at'])
+            award_points(txn)
 
         request.user.sales_count += 1
         request.user.save(update_fields=['sales_count'])

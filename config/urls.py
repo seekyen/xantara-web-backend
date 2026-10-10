@@ -15,4 +15,5 @@ urlpatterns = [
     path(API, include('apps.reports.urls')),
     path(API, include('apps.settings_app.urls')),
     path(API, include('apps.syncing.urls')),
+    path(API, include('apps.suppliers.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

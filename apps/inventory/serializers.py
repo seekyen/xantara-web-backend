@@ -65,6 +65,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Product
         fields = [
+            'id',
             'itemcode', 'itemcode2', 'itemcode3', 'itemcode3type',
             'desclong', 'descshort', 'querytext',
             'deptcode', 'classcode', 'categorycode', 'subcategorycode', 'group',
@@ -86,6 +87,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
             'stock_sr', 'stock_book_sr', 'beg_balance_sr',
             'stock_reserved', 'stock_rop', 'stock_limit', 'stock_onorder', 'beg_cost',
         ]
+        read_only_fields = ['id']
 
 
 class PublicCatalogItemSerializer(serializers.ModelSerializer):
@@ -172,6 +174,10 @@ class ProductStockWriteSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        if self.instance and self.instance.batch_balances.exists():
+            for field in ('itemcode', 'branch_code', 'stock_sa', 'stock_sr'):
+                if field in data and data[field] != getattr(self.instance, field):
+                    raise serializers.ValidationError('Use batch stock operations for tracked stock.')
         # Enforce unique itemcode + branch_code on create
         if self.instance is None:
             exists = ProductStock.objects.filter(

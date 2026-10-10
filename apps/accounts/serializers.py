@@ -51,6 +51,18 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
 
+class AdminPasswordResetSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError(
+                {'confirm_password': 'Passwords do not match.'},
+            )
+        return attrs
+
+
 class SetPinSerializer(serializers.Serializer):
     pin = serializers.CharField(min_length=4, max_length=6, write_only=True)
 

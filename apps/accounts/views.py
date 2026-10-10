@@ -10,7 +10,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .models import Staff
 from .serializers import (
     StaffSerializer, StaffCreateSerializer, StaffMeSerializer,
-    ChangePasswordSerializer,
+    ChangePasswordSerializer, AdminPasswordResetSerializer,
     SetPinSerializer, PinLoginSerializer,
     SetBiometricSerializer, BiometricLoginSerializer,
 )
@@ -59,14 +59,20 @@ class StaffViewSet(viewsets.ModelViewSet):
         return StaffCreateSerializer if self.action == 'create' else StaffSerializer
 
     def get_permissions(self):
-        if self.action in ('create','destroy'):
+        if self.action in ('create','destroy','reset_password'):
             return [IsAdmin()]
         if self.action in ('update','partial_update'):
             return [IsAdminOrManager()]
         return [IsAuthenticated()]
 
+    def create(self, request, *args, **kwargs):
+        s = self.get_serializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        staff = s.save()
+        return Response(StaffSerializer(staff).data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])
-    def change_password(self, request, _pk=None):
+    def change_password(self, request, pk=None):
         staff = self.get_object()
         s     = ChangePasswordSerializer(data=request.data)
         if s.is_valid():
@@ -77,8 +83,17 @@ class StaffViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Password updated'})
         return Response(s.errors, status=400)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAdmin])
+    def reset_password(self, request, pk=None):
+        staff = self.get_object()
+        serializer = AdminPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff.set_password(serializer.validated_data['new_password'])
+        staff.save(update_fields=['password', 'updated_at'])
+        return Response({'message': 'Password updated'})
+
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])
-    def toggle_status(self, request, _pk=None):
+    def toggle_status(self, request, pk=None):
         staff           = self.get_object()
         new_status      = request.data.get('status', 'active')
         staff.status    = new_status
@@ -87,7 +102,7 @@ class StaffViewSet(viewsets.ModelViewSet):
         return Response({'status': staff.status})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def set_pin(self, request, _pk=None):
+    def set_pin(self, request, pk=None):
         staff = self.get_object()
         s     = SetPinSerializer(data=request.data)
         if not s.is_valid():
@@ -97,14 +112,14 @@ class StaffViewSet(viewsets.ModelViewSet):
         return Response({'message': 'PIN set successfully'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def remove_pin(self, request, _pk=None):
+    def remove_pin(self, request, pk=None):
         staff          = self.get_object()
         staff.pin_code = ''
         staff.save(update_fields=['pin_code'])
         return Response({'message': 'PIN removed'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def set_biometric(self, request, _pk=None):
+    def set_biometric(self, request, pk=None):
         staff = self.get_object()
         s     = SetBiometricSerializer(data=request.data)
         if not s.is_valid():
@@ -114,7 +129,7 @@ class StaffViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Biometric registered'})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def remove_biometric(self, request, _pk=None):
+    def remove_biometric(self, request, pk=None):
         staff = self.get_object()
         staff.clear_biometric()
         staff.save(update_fields=['biometric_token', 'biometric_enabled'])
