@@ -1,11 +1,42 @@
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
 from .models import StoreSettings, Category, SubCategory, Department, Class, Size, Color, Unit, Form, ItemType
+from apps.accounts.models import Staff
 
 
 class StoreSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model   = StoreSettings
         exclude = ['id']
+        read_only_fields = ['business_id', 'setup_completed', 'setup_completed_at']
+
+
+class InitialSetupSerializer(serializers.Serializer):
+    company_name = serializers.CharField(max_length=200)
+    company_address = serializers.CharField(required=False, allow_blank=True)
+    company_email = serializers.EmailField(required=False, allow_blank=True)
+    company_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    branch_name = serializers.CharField(max_length=100)
+    branch_address = serializers.CharField(required=False, allow_blank=True)
+    branch_email = serializers.EmailField(required=False, allow_blank=True)
+    branch_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    admin_name = serializers.CharField(max_length=150)
+    admin_email = serializers.EmailField()
+    admin_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['admin_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError(
+                {'confirm_password': 'Passwords do not match.'},
+            )
+        candidate = Staff(
+            name=attrs['admin_name'],
+            email=attrs['admin_email'].lower(),
+            role='admin',
+        )
+        validate_password(attrs['admin_password'], user=candidate)
+        return attrs
 
 
 class CategorySerializer(serializers.ModelSerializer):

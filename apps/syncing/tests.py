@@ -24,7 +24,7 @@ class SyncEventUploadTests(APITestCase):
             role='admin',
             is_active=True,
         )
-        self.branch = Branch.objects.create(code='MAIN', name='Main Branch')
+        self.branch = Branch.objects.get_or_create(code='MAIN', defaults={'name': 'Main Branch'})[0]
         self.installation = SyncInstallation.objects.create(
             business_id='business-1',
             installation_id='installation-1',

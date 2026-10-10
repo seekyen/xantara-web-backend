@@ -152,9 +152,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def destroy(self, request, *args, **kwargs):
-        product        = self.get_object()
-        product.active = False
-        product.save()
+        from .batches import archive_product
+        product = self.get_object()
+        archive_product(product.pk, 'Archived via products API', request.user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # ------------------------------------------------------------------
@@ -169,48 +169,46 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     # ------------------------------------------------------------------
     # GET /products/stats/
-    # Migrated from your original — now aggregates across ProductStock
     # ------------------------------------------------------------------
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        products    = Product.objects.filter(active=True)
-        stock_qs    = ProductStock.objects.filter(itemcode__in=products.values('itemcode'))
+        all_products    = Product.objects.all()
+        active_products = all_products.filter(active=True)
+        stock_qs        = ProductStock.objects.filter(itemcode__in=active_products.values('itemcode'))
 
-        total_value = (
-            stock_qs
-            .annotate(
-                line_val=ExpressionWrapper(
-                    F('stock_sa') * F('sell_price_rp'),
-                    output_field=FloatField()
-                )
+        with_total_stk = stock_qs.annotate(
+            total_stk=ExpressionWrapper(
+                F('stock_sa') + F('stock_sr'),
+                output_field=FloatField()
             )
-            .aggregate(total=Sum('line_val'))['total'] or 0
         )
 
-        below_rop = (
-            stock_qs
-            .filter(stock_rop__gt=0)
-            .annotate(
-                total_stk=ExpressionWrapper(
-                    F('stock_sa') + F('stock_sr'),
-                    output_field=FloatField()
-                )
-            )
-            .filter(total_stk__lt=F('stock_rop'))
+        low_stock_count = (
+            with_total_stk
+            .filter(stock_rop__gt=0, total_stk__lt=F('stock_rop'))
+            .values('itemcode')
+            .distinct()
+            .count()
+        )
+
+        out_of_stock_count = (
+            with_total_stk
+            .filter(total_stk__lte=0)
             .values('itemcode')
             .distinct()
             .count()
         )
 
         return Response({
-            'total_products':        products.count(),
-            'below_rop':             below_rop,
-            'total_inventory_value': total_value,
+            'total_products':     all_products.count(),
+            'active_products':    active_products.count(),
+            'inactive_products':  all_products.filter(active=False).count(),
+            'low_stock_count':    low_stock_count,
+            'out_of_stock_count': out_of_stock_count,
         })
 
     # ------------------------------------------------------------------
     # GET /products/low_stock_alerts/
-    # Migrated — now queries ProductStock per branch
     # ------------------------------------------------------------------
     @action(detail=False, methods=['get'])
     def low_stock_alerts(self, request):
@@ -226,7 +224,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         if branch_code:
             qs = qs.filter(branch_code=branch_code)
 
-        return Response(ProductStockSerializer(qs, many=True).data)
+        itemcodes = qs.values_list('itemcode', flat=True).distinct()
+        products  = Product.objects.filter(itemcode__in=itemcodes, active=True)
+        return Response(ProductSerializer(products, many=True, context={'request': request}).data)
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +268,8 @@ class ProductStockViewSet(viewsets.ModelViewSet):
         location   = serializer.validated_data.get('location', 'sa')
         reason     = serializer.validated_data.get('reason', '')
         field      = 'stock_sa' if location == 'sa' else 'stock_sr'
+        if stock_record.batch_balances.exists():
+            return Response({'error': 'Use batch receiving or write-off for tracked stock.'}, status=400)
         new_qty    = getattr(stock_record, field) + adjustment
 
         if new_qty < 0:
@@ -308,8 +310,6 @@ class ProductStockViewSet(viewsets.ModelViewSet):
                     .select_for_update()
                     .get(itemcode=d['itemcode'], branch_code=d['branch_code'])
                 )
-                stock_record.deduct(d['qty'], location=d['location'])
-
                 StockMovement.record(
                     product_stock=stock_record,
                     movement_type='sale',
@@ -319,6 +319,8 @@ class ProductStockViewSet(viewsets.ModelViewSet):
                     remarks=d.get('remarks', ''),
                     created_by=d.get('created_by', str(request.user)),
                 )
+
+                stock_record.deduct(d['qty'], location=d['location'])
 
         except ProductStock.DoesNotExist:
             return Response(
@@ -369,6 +371,8 @@ class ProductStockViewSet(viewsets.ModelViewSet):
                 src = stock_map[d['from_branch_code']]
                 dst = stock_map[d['to_branch_code']]
 
+                if src.batch_balances.exists():
+                    raise ValidationError('Use Main Inventory distribution to preserve batch traceability.')
                 src.deduct(d['qty'], location=d['location'])
                 dst.restock(d['qty'], location=d['location'])
 

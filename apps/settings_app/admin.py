@@ -4,7 +4,8 @@ from .models import StoreSettings, Category, SubCategory, Department, Class, Siz
 
 @admin.register(StoreSettings)
 class StoreSettingsAdmin(admin.ModelAdmin):
-    list_display = ['store_name', 'contact_email', 'vat_rate', 'updated_at']
+    list_display = ['store_name', 'business_id', 'setup_completed', 'contact_email', 'vat_rate', 'updated_at']
+    readonly_fields = ['business_id', 'setup_completed', 'setup_completed_at']
 
 
 @admin.register(Category)

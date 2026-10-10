@@ -4,11 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db import transaction as db_transaction
 from django.db.models import Sum, Avg
 from django.utils import timezone
 from .models import Transaction
 from .serializers import TransactionSerializer, TransactionCreateSerializer
 from utils.permissions import IsAdminOrManager
+from apps.customers.loyalty import reverse_points
 
 class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -37,13 +39,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         txn = self.get_object()
         if txn.status != 'completed':
             return Response({'error': 'Only completed transactions can be refunded'}, status=400)
-        txn.status = 'refunded'
-        txn.save()
-        for item in txn.items.all():
-            if item.product:
-                item.product.stock += item.qty
-                item.product.sold  -= item.qty
-                item.product.save()
+        with db_transaction.atomic():
+            txn.status = 'refunded'
+            txn.save()
+            # Product has no `stock`/`sold` fields — restore the merged stock-on-hand
+            # field (stock_sa) that TransactionCreateSerializer.create deducted from.
+            for item in txn.items.all():
+                if item.product:
+                    item.product.stock_sa += item.qty
+                    item.product.save(update_fields=['stock_sa'])
+            reverse_points(txn)
         return Response(TransactionSerializer(txn).data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAdminOrManager])

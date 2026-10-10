@@ -8,11 +8,7 @@ from .models import Branch, Product, ProductStock
 class PublicBranchCatalogTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.branch = Branch.objects.create(
-            code='MAIN',
-            name='Main Branch',
-            address='123 Sample Street',
-        )
+        self.branch, _ = Branch.objects.update_or_create(code='MAIN', defaults={'name': 'Main Branch', 'address': '123 Sample Street'})
 
     def create_product(self, itemcode, **overrides):
         values = {

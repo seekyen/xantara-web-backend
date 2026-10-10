@@ -174,6 +174,10 @@ class ProductStockWriteSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        if self.instance and self.instance.batch_balances.exists():
+            for field in ('itemcode', 'branch_code', 'stock_sa', 'stock_sr'):
+                if field in data and data[field] != getattr(self.instance, field):
+                    raise serializers.ValidationError('Use batch stock operations for tracked stock.')
         # Enforce unique itemcode + branch_code on create
         if self.instance is None:
             exists = ProductStock.objects.filter(

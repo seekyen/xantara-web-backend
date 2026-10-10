@@ -1,0 +1,287 @@
+{
+  "version": 2,
+  "tiers": [
+    {
+      "key": "basic",
+      "label": "Basic",
+      "description": "Everyday product setup"
+    },
+    {
+      "key": "advanced",
+      "label": "Advanced",
+      "description": "Full classification, inventory control, purchasing and pricing detail"
+    }
+  ],
+  "fields": [
+    {
+      "key": "name",
+      "label": "Product name",
+      "type": "text",
+      "tier": 0,
+      "section": "Product Definition",
+      "required": true,
+      "maxLength": 120
+    },
+    {
+      "key": "sku",
+      "label": "SKU / product code",
+      "type": "text",
+      "tier": 0,
+      "section": "Product Definition",
+      "maxLength": 15,
+      "hint": "Leave blank to generate a code"
+    },
+    {
+      "key": "barcode",
+      "label": "Barcode",
+      "type": "text",
+      "tier": 0,
+      "section": "Product Definition",
+      "maxLength": 15
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "text",
+      "tier": 0,
+      "section": "Product Definition"
+    },
+    {
+      "key": "image_url",
+      "label": "Product image",
+      "type": "text",
+      "tier": 0,
+      "section": "Product Definition"
+    },
+    {
+      "key": "category",
+      "label": "Category",
+      "type": "text",
+      "tier": 0,
+      "section": "Classification",
+      "maxLength": 30
+    },
+    {
+      "key": "subcategory",
+      "label": "Subcategory",
+      "type": "text",
+      "tier": 1,
+      "section": "Classification"
+    },
+    {
+      "key": "unit",
+      "label": "Stock unit",
+      "type": "text",
+      "tier": 0,
+      "section": "Inventory Control",
+      "default": "pc",
+      "maxLength": 10
+    },
+    {
+      "key": "quantity",
+      "label": "Stock on hand",
+      "type": "integer",
+      "tier": 0,
+      "section": "Inventory Control",
+      "default": 0,
+      "hint": "Whole units of the stock unit. Changes are recorded in stock history."
+    },
+    {
+      "key": "last_restocked",
+      "label": "Last restocked",
+      "type": "date",
+      "tier": 0,
+      "section": "Inventory Control"
+    },
+    {
+      "key": "reorder_level",
+      "label": "Reorder level",
+      "type": "integer",
+      "tier": 1,
+      "section": "Inventory Control",
+      "default": 0
+    },
+    {
+      "key": "expiry_date",
+      "label": "Expiry date",
+      "type": "date",
+      "tier": 1,
+      "section": "Inventory Control"
+    },
+    {
+      "key": "location",
+      "label": "Shelf / bin location",
+      "type": "text",
+      "tier": 1,
+      "section": "Inventory Control"
+    },
+    {
+      "key": "units",
+      "label": "Unit conversions",
+      "type": "rows",
+      "tier": 1,
+      "section": "Inventory Control",
+      "fields": [
+        {
+          "key": "unit",
+          "label": "Unit",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "factor",
+          "label": "Stock units per unit",
+          "type": "decimal",
+          "positive": true,
+          "required": true
+        }
+      ]
+    },
+    {
+      "key": "batches",
+      "label": "Batches and lots",
+      "type": "rows",
+      "tier": 1,
+      "section": "Inventory Control",
+      "fields": [
+        {
+          "key": "lot",
+          "label": "Batch / lot",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "expiry",
+          "label": "Expiry date",
+          "type": "date"
+        },
+        {
+          "key": "quantity",
+          "label": "Quantity",
+          "type": "integer"
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "key": "supplier",
+      "label": "Primary supplier",
+      "type": "text",
+      "tier": 0,
+      "section": "Purchasing & Suppliers",
+      "hint": "Also updated automatically when you receive stock and choose a supplier (Stock batches → Receive stock)."
+    },
+    {
+      "key": "selling_price",
+      "label": "Selling price",
+      "type": "money",
+      "tier": 0,
+      "section": "Pricing & Promotions",
+      "default": "0.00"
+    },
+    {
+      "key": "cost_price",
+      "label": "Last purchase cost",
+      "type": "money",
+      "tier": 0,
+      "section": "Pricing & Promotions",
+      "default": "0.00"
+    },
+    {
+      "key": "wholesale_price",
+      "label": "Wholesale price",
+      "type": "money",
+      "tier": 1,
+      "section": "Pricing & Promotions"
+    },
+    {
+      "key": "cost_method",
+      "label": "Cost method",
+      "type": "select",
+      "tier": 1,
+      "section": "Pricing & Promotions",
+      "options": [
+        "weighted_average",
+        "fifo"
+      ],
+      "default": "weighted_average",
+      "hint": "Valuation policy recorded for reporting. Does not recost historical sales."
+    },
+    {
+      "key": "tax_category",
+      "label": "Tax classification",
+      "type": "select",
+      "tier": 1,
+      "section": "Pricing & Promotions",
+      "options": [
+        "vat12",
+        "vat_exempt",
+        "zero_rated",
+        "non_vat"
+      ],
+      "default": "vat12"
+    },
+    {
+      "key": "price_tiers",
+      "label": "Price tiers",
+      "type": "rows",
+      "tier": 1,
+      "section": "Pricing & Promotions",
+      "fields": [
+        {
+          "key": "name",
+          "label": "Tier",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "minimum_quantity",
+          "label": "Minimum quantity",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "key": "price",
+          "label": "Unit price",
+          "type": "money",
+          "required": true
+        },
+        {
+          "key": "effective_from",
+          "label": "Effective from",
+          "type": "date"
+        },
+        {
+          "key": "effective_to",
+          "label": "Effective to",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "key": "landed_costs",
+      "label": "Landed cost components",
+      "type": "rows",
+      "tier": 1,
+      "section": "Pricing & Promotions",
+      "fields": [
+        {
+          "key": "name",
+          "label": "Freight / duties / handling",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "amount",
+          "label": "Amount per stock unit (PHP)",
+          "type": "money",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

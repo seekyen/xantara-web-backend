@@ -1,7 +1,8 @@
+from .fiscal import FiscalSetupView, TerminalActivateView, TerminalClaimView
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    StoreSettingsView, CategoryViewSet, SubCategoryViewSet, DepartmentViewSet,
+    InitialSetupView, StoreSettingsView, CategoryViewSet, SubCategoryViewSet, DepartmentViewSet,
     ClassViewSet, SizeViewSet, ColorViewSet, UnitViewSet, FormViewSet, ItemTypeViewSet,
 )
 
@@ -17,6 +18,10 @@ router.register('forms',         FormViewSet,        basename='form')
 router.register('types',         ItemTypeViewSet,    basename='type')
 
 urlpatterns = [
+    path('settings/fiscal/', FiscalSetupView.as_view()),
+    path('settings/fiscal/terminals/<uuid:terminal_id>/activate/', TerminalActivateView.as_view()),
+    path('settings/fiscal/enroll/', TerminalClaimView.as_view()),
+    path('setup/status/', InitialSetupView.as_view()),
     path('settings/', StoreSettingsView.as_view()),
     path('', include(router.urls)),
 ]
